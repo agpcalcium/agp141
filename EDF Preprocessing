@@ -14,40 +14,20 @@ AASM Guidelines:
 
 '''
 
-#Let user select EDF file visually using GUI
-from tkinter import filedialog
-from tkinter import *
-
-from mne import set_bipolar_reference
-
-root = Tk() #initialise selection window root
-root.withdraw() #close Tk box immediately
-root.filename = filedialog.askopenfilename(initialdir = "/",title = "Select the EDF file",filetypes = (("edf files","*.edf"),("all files","*.*")))
-root.update() #update root to close file selection window
-
-edfFile = root.filename
-print ('EDF File Path:', root.filename)
-
+edfFile = EDF_PATH_HERE
 
 #load in .edf data using MNE Python
 import mne
-
 raw = mne.io.read_raw_edf(edfFile, eog = ['E1', 'E2'], misc = ['M1', 'M2', 'EKG', 'ChinR', 'ChinL'], preload = True)
-print(len(raw.ch_names), 'Channels recorded:', raw.ch_names)
-print(raw.info)
 
-#plot all channels, basic
-#raw.plot(scalings='auto')
-
-
-#specify F4,C4,O2 as EEG channels to include
-raw.picks = ['F4', 'C4', 'O2']
 #re-reference all EEG signals to M1
 eegRR = raw.set_eeg_reference(ref_channels =['M1'], projection = False)
+
 #Bipolar re-reference misc channels (anode is subtracted from cathode)
 eegRR = mne.set_bipolar_reference(inst = eegRR, anode = 'ChinR', cathode = 'ChinL', ch_name = 'EMG')
 eegRR = mne.set_bipolar_reference(inst = eegRR, anode = 'E1', cathode = 'M2', ch_name = 'EOG1')
 eegRR = mne.set_bipolar_reference(inst = eegRR, anode = 'E2', cathode = 'M2', ch_name = 'EOG2')
+
 #apply filters to specified channels
 #raw.picks = ['eeg', 'EMG', 'EOG1', 'EOG2', 'EKG']
 Filt1 = eegRR.filter(l_freq = 0.3, h_freq = 35, picks = ['F4', 'C4', '02', 'EOG1', 'EOG2'])
