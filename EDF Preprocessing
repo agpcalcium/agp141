@@ -1,0 +1,55 @@
+'''
+Script for preprocessing EEG data from .edf format
+according to AASM guidelines
+to be loaded into Sleep for manual sleep scoring
+
+AASM Guidelines:
+3 EEG channels (F4, C4, O2) referenced to M1; 200-500Hz SR; 0.3-35Hz bandpass
+2 EOG channels referenced to M2; 200-500Hz SR; 0.3-35Hz bandpass
+1-2 EMG channels referenced to each other; 200-500Hz SR; 10-100Hz bandpass
+1 ECG channel; 200-500Hz SR; 0.3-70Hz bandpass
+
+
+@author agpr141
+
+'''
+
+#Let user select EDF file visually using GUI
+from tkinter import filedialog
+from tkinter import *
+
+from mne import set_bipolar_reference
+
+root = Tk() #initialise selection window root
+root.withdraw() #close Tk box immediately
+root.filename = filedialog.askopenfilename(initialdir = "/",title = "Select the EDF file",filetypes = (("edf files","*.edf"),("all files","*.*")))
+root.update() #update root to close file selection window
+
+edfFile = root.filename
+print ('EDF File Path:', root.filename)
+
+
+#load in .edf data using MNE Python
+import mne
+
+raw = mne.io.read_raw_edf(edfFile, eog = ['E1', 'E2'], misc = ['M1', 'M2', 'EKG', 'ChinR', 'ChinL'], preload = True)
+print(len(raw.ch_names), 'Channels recorded:', raw.ch_names)
+print(raw.info)
+
+#plot all channels, basic
+#raw.plot(scalings='auto')
+
+
+#specify F4,C4,O2 as EEG channels to include
+raw.picks = ['F4', 'C4', 'O2']
+#re-reference all EEG signals to M1
+eegRR = raw.set_eeg_reference(ref_channels =['M1'], projection = False)
+#Bipolar re-reference misc channels (anode is subtracted from cathode)
+eegRR = mne.set_bipolar_reference(inst = eegRR, anode = 'ChinR', cathode = 'ChinL', ch_name = 'EMG')
+eegRR = mne.set_bipolar_reference(inst = eegRR, anode = 'E1', cathode = 'M2', ch_name = 'EOG1')
+eegRR = mne.set_bipolar_reference(inst = eegRR, anode = 'E2', cathode = 'M2', ch_name = 'EOG2')
+#apply filters to specified channels
+#raw.picks = ['eeg', 'EMG', 'EOG1', 'EOG2', 'EKG']
+Filt1 = eegRR.filter(l_freq = 0.3, h_freq = 35, picks = ['F4', 'C4', '02', 'EOG1', 'EOG2'])
+Filt2 = Filt1.filter(l_freq = 10, h_freq = 100, picks = ['ChinL', 'ChinR'])
+Filt3 = Filt2.filter(l_freq = 0.3, h_freq = 70, picks = 'EKG')
